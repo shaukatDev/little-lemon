@@ -12,13 +12,13 @@ fun Navigation(navController: NavHostController) {
         startDestination = OnBoarding.route
     ) {
         composable(OnBoarding.route) {
-           //TODO add onBoarding composable
+            OnBoarding(navController)
         }
         composable(Home.route) {
-            //TODO add Home composable
+            Home(navController)
         }
         composable(Profile.route) {
-            //TODO add Profile composable
+            Profile(navController)
         }
     }
 }
