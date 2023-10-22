@@ -29,11 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -51,15 +51,24 @@ import com.bumptech.glide.integration.compose.GlideImage
 
 @Composable
 fun Home(navController: NavHostController, appDatabase: AppDatabase) {
+
     val menuItemsDB by appDatabase.menuItemDao().getAll().observeAsState(emptyList())
+    var selectedCategory = remember { mutableStateOf("") }
+    val searchPhrase = remember {
+        mutableStateOf("")
+    }
 
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
         TopSection(navController)
-        HeroSection()
-        MenuBreakDownSection()
-        MenuItems(menuItemsList = menuItemsDB)
+        HeroSection(searchPhrase = searchPhrase)
+        MenuBreakDownSection(menuItemsDB = menuItemsDB, selectedCategory = selectedCategory)
+        MenuItems(
+            menuItemsList = menuItemsDB,
+            searchPhrase = searchPhrase,
+            selectedCategory = selectedCategory
+        )
     }
 }
 
@@ -95,7 +104,7 @@ fun TopSection(navController: NavHostController) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HeroSection() {
+fun HeroSection(searchPhrase: MutableState<String>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -138,14 +147,12 @@ fun HeroSection() {
 
 
         }
-        var searchPhrase by remember {
-            mutableStateOf("")
-        }
+
         TextField(
             label = { Text(text = "Enter search phrase") },
-            value = searchPhrase,
+            value = searchPhrase.value,
             onValueChange = {
-                searchPhrase = it
+                searchPhrase.value = it
             },
             singleLine = true,
             modifier = Modifier
@@ -168,8 +175,8 @@ fun HeroSection() {
 }
 
 @Composable
-fun MenuBreakDownSection() {
-    val catItems = listOf("Starters", "Mains", "Desserts", "Drinks")
+fun MenuBreakDownSection(selectedCategory: MutableState<String>, menuItemsDB: List<MenuItemDB>) {
+    val catItems = menuItemsDB.flatMap { listOf(it.category, it.category) }.distinct()
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Text(
             text = "ORDER FOR DELIVERY!",
@@ -185,8 +192,8 @@ fun MenuBreakDownSection() {
         ) {
             catItems.forEach {
                 Button(
-                    onClick = {},
-                    modifier = Modifier.height(30.dp),
+                    onClick = { selectedCategory.value = it },
+                    modifier = Modifier.height(40.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFEDEFEE)
                     ),
@@ -200,14 +207,23 @@ fun MenuBreakDownSection() {
 }
 
 @Composable
-fun MenuItems(menuItemsList: List<MenuItemDB>) {
-
+fun MenuItems(
+    menuItemsList: List<MenuItemDB>,
+    searchPhrase: MutableState<String>,
+    selectedCategory: MutableState<String>
+) {
+    var menuItems =
+        if (selectedCategory.value.isNotEmpty()) menuItemsList.filter { it.category == selectedCategory.value } else menuItemsList
+    if (searchPhrase.value.isNotEmpty()) {
+        menuItems =
+            menuItemsList.filter { it.title.contains(searchPhrase.value, ignoreCase = true) }
+    }
     LazyColumn(
         modifier = Modifier
             .fillMaxHeight()
             .padding(16.dp)
     ) {
-        items(items = menuItemsList, itemContent = { menuItem -> MenuItem(menuItem) })
+        items(items = menuItems, itemContent = { menuItem -> MenuItem(menuItem) })
     }
 }
 
@@ -235,7 +251,11 @@ fun MenuItem(menuItem: MenuItemDB) {
                     color = Color.Gray
                 )
             }
-            GlideImage(model = menuItem.image, contentDescription = "menu item image")
+            GlideImage(
+                model = menuItem.image,
+                contentDescription = "menu item image",
+                modifier = Modifier.size(80.dp)
+            )
         }
     }
 }
